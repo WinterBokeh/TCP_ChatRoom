@@ -38,6 +38,26 @@ func formatByte(username string, byteMsg []byte) string {
 	return username + " : " + string(byteMsg)
 }
 
+//tcp logout
+func Logout(client *Client)  {
+	delete(clientsMap, client.username)
+	msg <- client.username + " is logout "
+	err := client.conn.Close()
+	if err != nil {
+		fmt.Println("logout conn err: ", err)
+		return
+	}
+}
+
+//print online user list
+func PrintList(conn net.Conn) {
+	conn.Write([]byte("online users as follows:\nlist begin:\n"))
+	for username, _ := range clientsMap {
+		conn.Write([]byte(username + "\n"))
+	}
+	conn.Write([]byte("list end.\n"))
+}
+
 //read message of chat
 func solveConn(client *Client, selfName string)  {
 	buff := make([]byte, 1024)
@@ -49,8 +69,14 @@ func solveConn(client *Client, selfName string)  {
 			fmt.Println("solveConn err:", err)
 			return
 		}
-		
-		if n > 0 {
+
+		if string(buff[:n]) == "/logout" {
+			fmt.Println(client.username, " is logout")
+			Logout(client)
+		} else if string(buff[:n]) == "/list" {
+			fmt.Println(client.username, " request user list")
+			PrintList(client.conn)
+		} else if n > 0 {
 			msg <- formatByte(selfName, buff[:n])
 		}
 	}
